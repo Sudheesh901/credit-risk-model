@@ -24,9 +24,8 @@ Credit risk modelling is a classic supervised learning use case in financial ana
 
 ## Demo
 
-The GIFs below are kept in the local `gifs/` folder for demonstration purposes and are intentionally ignored by Git so the repository stays clean and lightweight.
 
-> If your GIF files are stored locally in `gifs/`, they will render in the README from your workspace. They will not be included in Git pushes because of the ignore rule.
+>
 
 ![App walkthrough](gifs/streamlit_demo.gif)
 ![Prediction flow](gifs/credit_risk_prediction.gif)
