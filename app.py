@@ -1,38 +1,74 @@
 # 1 is Good(Lower Risk), 0 is Bad(Higher risk)
-import streamlit as st
-import pandas as pd
-import joblib
+from pathlib import Path
 
-model = joblib.load("xgboost_credit_model.pkl")
-columns=["Sex","Housing","Saving accounts","Checking account"]
-encoder = {col:joblib.load(f"{col}_encoder.pkl") for col in columns}
+import joblib
+import pandas as pd
+import streamlit as st
+
+base_dir = Path(__file__).resolve().parent
+notebooks_dir = base_dir / "Notebooks"
+
+model = joblib.load(notebooks_dir / "xgboost_credit_model.pkl")
+feature_columns = list(getattr(model, "feature_names_in_", [
+    "Age",
+    "Sex",
+    "Job",
+    "Housing",
+    "Saving accounts",
+    "Checking account",
+    "Credit amount",
+    "Duration",
+]))
+
+encoders = {}
+for column in feature_columns:
+    if column in {"Age", "Credit amount", "Duration"}:
+        continue
+    encoder_path = notebooks_dir / f"{column}_encoder.pkl"
+    if encoder_path.exists():
+        encoders[column] = joblib.load(encoder_path)
+
+
+def encode_value(column_name, value):
+    encoder = encoders[column_name]
+    return int(encoder.transform([value])[0])
+
 
 st.title("Credit risk Prediction App")
-st.write("Enter the appicants information to predict if the credit risk is good or bad")
+st.write("Enter the applicant information to predict if the credit risk is good or bad.")
 
-age=st.number_input("Age",min_value=18,max_value=80,value=30)
-sex=st.selectbox("Sex",["male","female"])
-job=st.number_input("Job (0-3)",min_value=0,max_value=3,value=0)
-housing=st.selctbox("Housing",["own","rent","free"])
-saving_accounts=st.selectbox("Saving accounts",["little","moderate","rich","quite rich"])
-checking_accounts=st.selctbox("Checking accounts"),["little","moderate","rich"]
-credit_amount=st.number_input("Credit Amount",min_value=0,value=100)
-duration=st.number_input("Duration(months)",min_value=1,value=12)
+# Raw categorical values for the user, encoded internally before prediction
+age = st.number_input("Age", min_value=18, max_value=80, value=30)
+sex = st.selectbox("Sex", list(encoders["Sex"].classes_))
+job = st.selectbox("Job", list(encoders["Job"].classes_))
+housing = st.selectbox("Housing", list(encoders["Housing"].classes_))
+saving_accounts = st.selectbox("Saving accounts", list(encoders["Saving accounts"].classes_))
+checking_account = st.selectbox("Checking account", list(encoders["Checking account"].classes_))
+credit_amount = st.number_input("Credit Amount", min_value=0, value=100)
+duration = st.number_input("Duration (months)", min_value=1, value=12)
 
-input_df=pd.DataFrame(
+user_inputs = {
+    "Age": age,
+    "Sex": sex,
+    "Job": job,
+    "Housing": housing,
+    "Saving accounts": saving_accounts,
+    "Checking account": checking_account,
+    "Credit amount": credit_amount,
+    "Duration": duration,
+}
+
+input_df = pd.DataFrame([
     {
-        "Age":[age],
-        "Sex":[encoder["Sex"].transform([sex])[0]],
-        "Job":[job],
-        "Housing":[encoder["Housing"].transform([housing])[0]],
-        "Saving accounts":[encoder["Saving accounts"].transform([saving_accounts])[0]],
-        "Checking accounts":[encoder["Checking accounts"].transform([checking_accounts])[0]],
-        "Credit amount":[credit_amount],
-        "Duration":[duration]
+        column: encode_value(column, user_inputs[column]) if column in encoders else user_inputs[column]
+        for column in feature_columns
     }
-)
-if st.button("Predict Risk"):
-    predict=model.prdict(input_df)[0]
+])
 
-    if predict == 1:
+if st.button("Predict Risk"):
+    prediction = int(model.predict(input_df)[0])
+
+    if prediction == 1:
         st.success("The predicted credit risk is: **GOOD**")
+    else:
+        st.error("The predicted credit risk is: **BAD**")

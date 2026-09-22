@@ -49,6 +49,10 @@ htmlcov/
 *.hdf5
 *.parquet
 
+# GIF assets (local demo files only)
+gifs/*.gif
+!gifs/.gitkeep
+
 # Logs and temporary files
 *.log
 debug.log
